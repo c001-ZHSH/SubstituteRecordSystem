@@ -1,0 +1,214 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- Section: Input -->
+<section id="input-section" class="content-section active">
+    <div class="header-banner">
+        <h1>新增代課與請假紀錄</h1>
+        <p>填寫請假主檔並新增多筆代課明細，最後一併儲存。</p>
+    </div>
+
+    <form id="record-form">
+        <!-- Master Record (Leave Details) -->
+        <div class="card glass-panel master-card">
+            <h3>請假主檔資訊</h3>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="teacher_name">請假教師姓名 <span class="required">*</span></label>
+                    <input type="text" id="teacher_name" name="teacher_name" list="teacher-list" required
+                        placeholder="例如：吳心慈">
+                </div>
+                <div class="form-group">
+                    <label for="leave_reason">請假原因 <span class="required">*</span></label>
+                    <select id="leave_reason" name="leave_reason" required>
+                        <option value="" disabled selected>請選擇，或點擊左側「管理請假原因」新增</option>
+                        {% for reason in leave_reasons %}
+                        <option value="{{ reason }}">{{ reason }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="approval_number">核准文號</label>
+                    <input type="text" id="approval_number" name="approval_number" placeholder="例如：北市芳實中東特字..."
+                        title="公假建議填寫">
+                </div>
+            </div>
+        </div>
+
+        <!-- Auto Fill Record (Schedule Based) -->
+        <div class="card glass-panel auto-fill-card" style="border-left: 4px solid var(--primary-color);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                <h3 style="margin-bottom: 0; border: none; padding: 0;">帶出代課明細 <span
+                        style="font-size: 0.8rem; color: var(--text-secondary); font-weight: normal;">(依據左側「教師課表管理」設定)</span>
+                </h3>
+                <button type="button" class="btn btn-primary btn-sm" id="auto-fill-btn">自動帶出</button>
+            </div>
+            <div class="form-row grids-4" style="align-items: flex-end;">
+                <div class="form-group">
+                    <label>請假開始日期</label>
+                    <input type="date" id="leave-start-date">
+                </div>
+                <div class="form-group">
+                    <label>開始節次</label>
+                    <input type="number" id="leave-start-period" min="1" max="7" value="1" placeholder="1-7">
+                </div>
+                <div class="form-group">
+                    <label>請假結束日期</label>
+                    <input type="date" id="leave-end-date">
+                </div>
+                <div class="form-group">
+                    <label>結束節次</label>
+                    <input type="number" id="leave-end-period" min="1" max="7" value="7" placeholder="1-7">
+                </div>
+            </div>
+        </div>
+
+        <!-- Detail Records (Substitute Details) -->
+        <div class="card glass-panel details-card">
+            <div class="details-header">
+                <h3>代課明細</h3>
+            </div>
+
+            <div id="details-container">
+                <!-- Template for dynamic details will be inserted here by JS -->
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button type="button" class="btn btn-secondary" id="reset-form-btn">重新填寫</button>
+            <button type="submit" class="btn btn-primary btn-large">儲存全部紀錄</button>
+        </div>
+    </form>
+</section>
+
+<!-- Section: Query and Export -->
+<section id="query-section" class="content-section" style="display: none;">
+    <div class="header-banner">
+        <h1>資料查詢與匯出</h1>
+        <p>設定條件過濾代課紀錄，並可匯出 Excel 清單與清冊。</p>
+    </div>
+
+    <div class="card glass-panel query-card">
+        <form id="query-form" class="form-row align-bottom">
+            <div class="form-group">
+                <label for="q_start_date">開始日期</label>
+                <input type="date" id="q_start_date" name="start_date">
+            </div>
+            <div class="form-group">
+                <label for="q_end_date">結束日期</label>
+                <input type="date" id="q_end_date" name="end_date">
+            </div>
+            <div class="form-group">
+                <label for="q_leave_teacher">請假教師</label>
+                <input type="text" id="q_leave_teacher" name="leave_teacher" list="teacher-list" placeholder="輸入姓名">
+            </div>
+            <div class="form-group">
+                <label for="q_sub_teacher">代課教師</label>
+                <input type="text" id="q_sub_teacher" name="sub_teacher" list="teacher-list" placeholder="輸入姓名">
+            </div>
+            <div class="form-group actions">
+                <button type="submit" class="btn btn-primary">查詢</button>
+                <button type="button" class="btn btn-secondary" id="open-export-modal-btn" disabled>匯出勾選項目</button>
+                <button type="button" class="btn btn-outline" id="batch-delete-btn" disabled
+                    style="margin-left: 0.5rem; color: var(--danger-color); border-color: var(--danger-color);">批次刪除</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="card glass-panel results-card">
+        <div class="table-responsive">
+            <table class="data-table" id="results-table">
+                <thead>
+                    <tr>
+                        <th width="40"><input type="checkbox" id="select-all-cb"></th>
+                        <th>請假教師</th>
+                        <th>核准文號</th>
+                        <th>代課日期</th>
+                        <th>代課教師</th>
+                        <th>節次</th>
+                        <th>科目</th>
+                        <th>班級</th>
+                        <th>節數</th>
+                        <th>超鐘點</th>
+                        <th>調課</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td colspan="11" class="text-center text-muted">請設定條件並點擊查詢</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+
+<!-- JS Template for substitute record -->
+<template id="substitute-row-template">
+    <div class="detail-row animate-fade-in" style="padding-bottom: 0.25rem;">
+        <button type="button" class="btn-icon remove-detail-btn" title="移除此筆" tabindex="-1">&times;</button>
+        <div class="form-row grids-6" style="margin-bottom: 0; gap: 0.5rem;">
+            <div class="form-group" style="flex: 1.2;">
+                <label>日期 <span class="required">*</span></label>
+                <input type="date" class="sub-date-input" required style="padding: 0.25rem; font-size: 0.85rem;">
+                <input type="hidden" name="substitute_date[]" class="sub-date-hidden">
+            </div>
+            <div class="form-group" style="flex: 1.2;">
+                <label>代課教師 <span class="required">*</span></label>
+                <input type="text" name="substitute_teacher[]" list="teacher-list" required placeholder="姓名"
+                    style="padding: 0.25rem; font-size: 0.85rem;">
+            </div>
+            <div class="form-group">
+                <label>節次 <span class="required">*</span></label>
+                <input type="text" name="periods[]" class="sub-periods-input" required placeholder="2-4 或 3,5"
+                    style="padding: 0.25rem; font-size: 0.85rem;">
+            </div>
+            <div class="form-group" style="flex: 0.8;">
+                <label>計算節數</label>
+                <input type="number" name="period_count[]" class="sub-period-count" readonly value="0"
+                    style="background-color: #f1f5f9; padding: 0.25rem; font-size: 0.85rem;">
+            </div>
+            <div class="form-group">
+                <label>科目 <span class="required">*</span></label>
+                <input type="text" name="subject[]" required placeholder="健體"
+                    style="padding: 0.25rem; font-size: 0.85rem;">
+            </div>
+            <div class="form-group">
+                <label>班級 <span class="required">*</span></label>
+                <input type="text" name="class_name[]" required placeholder="特教班"
+                    style="padding: 0.25rem; font-size: 0.85rem;">
+            </div>
+        </div>
+        <div class="form-row"
+            style="margin-top: 0; margin-bottom: 0; justify-content: space-between; align-items: center;">
+            <div class="form-group" style="flex: 1; max-width: 200px; margin-right: 1rem;">
+                <!-- 備註移到下方節省主行空間 -->
+                <input type="text" name="remarks[]" placeholder="備註 (選填)" style="padding: 0.2rem; font-size: 0.8rem;">
+            </div>
+            <div class="form-group checkbox-group" style="flex: initial; display: flex; gap: 1rem;">
+                <label class="checkbox-label" style="font-size: 0.8rem; pointer-events: none; opacity: 0.7;"
+                    title="由自動帶出功能設定，無法手動修改">
+                    <input type="checkbox" name="is_moe_subsidized_chk[]" value="true"
+                        style="width: 1rem; height: 1rem;">
+                    <span>教育部補助超鐘點</span>
+                </label>
+                <input type="hidden" name="is_moe_subsidized[]" value="false" class="hidden-cb-sync">
+
+                <label class="checkbox-label" style="font-size: 0.8rem; cursor: pointer;">
+                    <input type="checkbox" name="is_swapped_chk[]" value="true" class="swap-checkbox"
+                        style="width: 1rem; height: 1rem;">
+                    <span>調課</span>
+                </label>
+                <input type="hidden" name="is_swapped[]" value="false" class="hidden-swap-sync">
+            </div>
+        </div>
+    </div>
+</template>
+
+<datalist id="teacher-list">
+    {% for teacher in teachers %}
+    <option value="{{ teacher }}">
+        {% endfor %}
+</datalist>
+{% endblock %}

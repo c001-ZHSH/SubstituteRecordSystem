@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>代課記錄與印領清冊系統</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=4">
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>代課管理系統</h2>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="#" class="nav-item active" data-target="input-section">
+                    <span class="icon">📝</span>
+                    新增代課紀錄
+                </a>
+                <a href="#" class="nav-item" data-target="query-section">
+                    <span class="icon">🔍</span>
+                    資料查詢與匯出
+                </a>
+                <a href="#" class="nav-item" id="manage-teachers-btn">
+                    <span class="icon">👥</span>
+                    管理教師名單
+                </a>
+                <a href="#" class="nav-item" id="manage-leave-reasons-btn">
+                    <span class="icon">🏷️</span>
+                    管理請假原因
+                </a>
+                <a href="#" class="nav-item" id="manage-schedules-btn">
+                    <span class="icon">📅</span>
+                    教師課表管理
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <!-- Export Preview Modal -->
+    <div id="export-modal" class="modal">
+        <div class="modal-content glass-panel" style="max-width: 900px;">
+            <div class="modal-header">
+                <h3>匯出選項與完整預覽</h3>
+                <button class="close-btn" id="close-export-modal-btn">&times;</button>
+            </div>
+            <div class="modal-body" style="padding-top: 0.5rem;">
+                <!-- Tab Headers -->
+                <div class="tabs">
+                    <button class="tab-btn active" data-target="tab-payment">印領清冊預覽 (扣款設定)</button>
+                    <button class="tab-btn" data-target="tab-list">代課清單預覽</button>
+                </div>
+
+                <form id="export-form">
+                    <!-- Tab-1: Payment Receipt & Deductions -->
+                    <div id="tab-payment" class="tab-content active">
+                        <div class="form-row">
+                            <div class="form-group" style="flex: 1 1 100%;">
+                                <label for="export-unit-price">鐘點費單價 (元)</label>
+                                <input type="number" id="export-unit-price" name="unit_price" value="455" required>
+                            </div>
+                        </div>
+                        <div class="teacher-deductions-container mt-3">
+                            <label
+                                style="font-size: 0.875rem; font-weight: 500; color: var(--text-secondary); margin-bottom: 0.5rem; display: block;">
+                                實領金額試算 (可直接修改健保與勞保扣款)
+                            </label>
+                            <div class="table-responsive"
+                                style="max-height: 400px; overflow-y: auto; border: 1px solid #d1d5db; border-radius: var(--radius-md);">
+                                <table class="data-table" id="deductions-table" style="margin-bottom: 0; border: none;">
+                                    <thead style="position: sticky; top: 0; z-index: 1;">
+                                        <tr>
+                                            <th>代課教師</th>
+                                            <th>總節數</th>
+                                            <th>應發金額</th>
+                                            <th>健保扣款</th>
+                                            <th>勞保扣款</th>
+                                            <th>實領金額</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Dynamic Rows Inserted by JS -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tab-2: Substitute List Preview -->
+                    <div id="tab-list" class="tab-content">
+                        <label
+                            style="font-size: 0.875rem; font-weight: 500; color: var(--text-secondary); margin-bottom: 0.5rem; display: block;">
+                            即將匯出的代課紀錄 (唯讀)
+                        </label>
+                        <div class="table-responsive"
+                            style="max-height: 400px; overflow-y: auto; border: 1px solid #d1d5db; border-radius: var(--radius-md);">
+                            <table class="data-table" id="preview-list-table"
+                                style="margin-bottom: 0; border: none; font-size: 0.85rem;">
+                                <thead style="position: sticky; top: 0; z-index: 1;">
+                                    <tr>
+                                        <th>請假教師</th>
+                                        <th>假別/文號</th>
+                                        <th>代課日期</th>
+                                        <th>代課教師</th>
+                                        <th>節次</th>
+                                        <th>科目</th>
+                                        <th>班級</th>
+                                        <th>節數</th>
+                                        <th>備註</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Dynamic Rows Inserted by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="cancel-export">取消</button>
+                <button type="button" class="btn btn-primary" id="confirm-export-list">下載 代課清單</button>
+                <button type="button" class="btn btn-primary" id="confirm-export-payment">下載 印領清冊</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Teacher Management Modal -->
+    <div id="teacher-modal" class="modal">
+        <div class="modal-content glass-panel">
+            <div class="modal-header">
+                <h3>管理教師名單 (下拉選單來源)</h3>
+                <button class="close-btn" id="close-teacher-modal-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-row" style="margin-bottom: 1rem;">
+                    <div class="form-group" style="flex: 1; display: flex; gap: 0.5rem;">
+                        <input type="text" id="new-teacher-name" placeholder="輸入新教師姓名..." style="flex: 1;">
+                        <button type="button" class="btn btn-primary" id="add-teacher-btn">新增</button>
+                    </div>
+                </div>
+
+                <div class="table-responsive"
+                    style="max-height: 250px; overflow-y: auto; border: 1px solid #d1d5db; border-radius: var(--radius-md);">
+                    <table class="data-table" id="teachers-table" style="margin-bottom: 0; border: none;">
+                        <thead style="position: sticky; top: 0; z-index: 1;">
+                            <tr>
+                                <th>教師姓名</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Teachers loaded via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Record Modal -->
+    <div id="edit-record-modal" class="modal">
+        <div class="modal-content glass-panel" style="max-width: 800px;">
+            <div class="modal-header">
+                <h3>編輯代課紀錄</h3>
+                <button class="close-btn" id="close-edit-modal-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="edit-record-form">
+                    <input type="hidden" id="edit-record-id">
+
+                    <h4 style="margin-bottom: 1rem; color: var(--primary-color);">請假主檔資訊</h4>
+                    <div class="form-row grids-3">
+                        <div class="form-group">
+                            <label>請假教師姓名 <span class="required">*</span></label>
+                            <input type="text" id="edit-leave-teacher" required list="teacher-list">
+                        </div>
+                        <div class="form-group">
+                            <label>請假原因 <span class="required">*</span></label>
+                            <select id="edit-leave-reason" required>
+                                {% for reason in leave_reasons %}
+                                <option value="{{ reason }}">{{ reason }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>核准文號</label>
+                            <input type="text" id="edit-approval-number">
+                        </div>
+                    </div>
+
+                    <h4 style="margin: 1.5rem 0 1rem; color: var(--primary-color);">代課明細資訊</h4>
+                    <div class="form-row grids-4">
+                        <div class="form-group">
+                            <label>代課日期 <span class="required">*</span></label>
+                            <input type="text" id="edit-sub-date" required placeholder="如: 115/03/06(五)">
+                        </div>
+                        <div class="form-group">
+                            <label>代課教師 <span class="required">*</span></label>
+                            <input type="text" id="edit-sub-teacher" list="teacher-list" required>
+                        </div>
+                        <div class="form-group">
+                            <label>代課節次 <span class="required">*</span></label>
+                            <input type="text" id="edit-periods" required placeholder="例如: 2-4 或 3,5">
+                        </div>
+                        <div class="form-group">
+                            <label>系統計算節數</label>
+                            <input type="number" id="edit-period-count" required>
+                        </div>
+                    </div>
+
+                    <div class="form-row grids-3">
+                        <div class="form-group">
+                            <label>科目 <span class="required">*</span></label>
+                            <input type="text" id="edit-subject" required>
+                        </div>
+                        <div class="form-group">
+                            <label>班級 <span class="required">*</span></label>
+                            <input type="text" id="edit-class-name" required>
+                        </div>
+                        <div class="form-group">
+                            <label>備註</label>
+                            <input type="text" id="edit-remarks">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group checkbox-group" style="width: 100%; display: flex; gap: 1rem;">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="edit-is-moe">
+                                <span>教育部補助超鐘點</span>
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="edit-is-swapped">
+                                <span>調課</span>
+                            </label>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="cancel-edit-btn">取消</button>
+                <button type="button" class="btn btn-primary" id="save-edit-btn">儲存修改</button>
+            </div>
+        </div>
+    </div>
+    <!-- Leave Reason Management Modal -->
+    <div id="leave-reason-modal" class="modal">
+        <div class="modal-content glass-panel" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3>管理請假原因名單</h3>
+                <button class="close-btn" id="close-leave-reason-modal-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-row gap-4" style="align-items: flex-end;">
+                    <div class="form-group flex-1">
+                        <label>新增請假原因</label>
+                        <input type="text" id="new-leave-reason-name" placeholder="輸入新的請假原因 (例如：公傷假)">
+                    </div>
+                    <button type="button" class="btn btn-primary" id="add-leave-reason-btn">新增</button>
+                </div>
+                <div class="table-responsive mt-3"
+                    style="max-height: 250px; overflow-y: auto; border: 1px solid #d1d5db; border-radius: var(--radius-md);">
+                    <table class="data-table" id="leave-reasons-table" style="margin-bottom: 0; border: none;">
+                        <thead style="position: sticky; top: 0; z-index: 1;">
+                            <tr>
+                                <th>請假原因</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Leave Reasons loaded via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Schedule Management Modal -->
+    <div id="schedule-modal" class="modal">
+        <div class="modal-content glass-panel" style="max-width: 1000px;">
+            <div class="modal-header">
+                <h3>教師課表管理</h3>
+                <button class="close-btn" id="close-schedule-modal-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <!-- List View -->
+                <div id="schedule-list-view">
+                    <div style="display: flex; justify-content: flex-end; margin-bottom: 1rem;">
+                        <button type="button" class="btn btn-primary" id="new-schedule-btn">新增教師課表</button>
+                    </div>
+                    <div class="table-responsive"
+                        style="max-height: 400px; overflow-y: auto; border: 1px solid #d1d5db; border-radius: var(--radius-md);">
+                        <table class="data-table" id="schedules-list-table" style="margin-bottom: 0; border: none;">
+                            <thead style="position: sticky; top: 0; z-index: 1;">
+                                <tr>
+                                    <th>教師姓名 (生效期間)</th>
+                                    <th style="width: 150px; text-align: right;">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- JS populates schedule list here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Edit View -->
+                <div id="schedule-edit-view" style="display: none;">
+                    <div class="form-row grids-3" style="align-items: flex-end;">
+                        <div class="form-group">
+                            <label>選擇教師</label>
+                            <select id="schedule-teacher-select" required>
+                                <option value="">請選擇教師...</option>
+                                {% for teacher in master_teachers %}
+                                <option value="{{ teacher }}">{{ teacher }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>課表生效開始日 <span class="required">*</span></label>
+                            <input type="date" id="schedule-start-date" required>
+                        </div>
+                        <div class="form-group">
+                            <label>課表生效結束日 <span class="required">*</span></label>
+                            <input type="date" id="schedule-end-date" required>
+                        </div>
+                    </div>
+
+                    <h4 style="margin: 1.5rem 0 0.5rem; color: var(--primary-color); font-size: 1rem;">每週課表設定 <span
+                            style="font-size: 0.8rem; color: var(--text-secondary); font-weight: normal;">(空白表示沒課)</span>
+                    </h4>
+                    <div class="table-responsive"
+                        style="max-height: calc(100vh - 200px); overflow-y: auto; overflow-x: auto; border: 1px solid #d1d5db; border-radius: var(--radius-md);">
+                        <table class="data-table" id="schedule-table"
+                            style="margin-bottom: 0; border: none; min-width: 800px;">
+                            <thead style="position: sticky; top: 0; z-index: 10;">
+                                <tr>
+                                    <th style="width: 60px; text-align: center;">節次</th>
+                                    <th style="text-align: center;">星期一</th>
+                                    <th style="text-align: center;">星期二</th>
+                                    <th style="text-align: center;">星期三</th>
+                                    <th style="text-align: center;">星期四</th>
+                                    <th style="text-align: center;">星期五</th>
+                                </tr>
+                            </thead>
+                            <tbody id="schedule-tbody">
+                                <!-- JS generates 7 rows here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer" id="schedule-modal-footer" style="display: none; justify-content: flex-end;">
+                <div>
+                    <button type="button" class="btn btn-secondary" id="cancel-schedule-btn">返回列表</button>
+                    <button type="button" class="btn btn-primary" id="save-schedule-btn">儲存課表</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}?v=11"></script>
+</body>
+
+</html>
