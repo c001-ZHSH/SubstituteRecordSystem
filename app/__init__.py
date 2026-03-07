@@ -7,20 +7,14 @@ import traceback
 def create_app():
     # Detect if we are running from a PyInstaller executable
     if getattr(sys, 'frozen', False):
-        bundle_dir = getattr(sys, '_MEIPASS', os.path.dirname(sys.executable))
-        
-        # When --onedir with --add-data "app/templates:app/templates", 
-        # the structure inside _MEIPASS is exactly _MEIPASS/app/templates
-        template_dir = os.path.join(bundle_dir, 'app', 'templates')
-        static_dir = os.path.join(bundle_dir, 'app', 'static')
-        
-        app = Flask(__name__, template_folder=template_dir, static_folder=static_dir)
-        basedir = os.path.dirname(sys.executable)
+        basedir = getattr(sys, '_MEIPASS', os.path.dirname(sys.executable))
+        app = Flask(__name__, template_folder='app/templates', static_folder='app/static', root_path=basedir)
+        db_path = os.path.join(os.path.dirname(sys.executable), 'database.db')
     else:
         app = Flask(__name__, template_folder='templates', static_folder='static')
         basedir = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
+        db_path = os.path.join(basedir, 'database.db')
 
-    db_path = os.path.join(basedir, 'database.db')
     # Windows path safety for SQLAlchemy (replaces \ with /)
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + db_path.replace('\\', '/')
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
