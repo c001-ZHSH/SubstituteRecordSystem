@@ -25,6 +25,25 @@ def create_app():
     with app.app_context():
         db.create_all()
 
+    # Configure Flask logging to write to error.log
+    import logging
+    from logging.handlers import RotatingFileHandler
+    
+    if getattr(sys, 'frozen', False):
+        log_dir = os.path.dirname(sys.executable)
+    else:
+        log_dir = os.path.dirname(basedir)
+        
+    log_file = os.path.join(log_dir, 'error.log')
+    file_handler = RotatingFileHandler(log_file, maxBytes=10240, backupCount=10)
+    file_handler.setFormatter(logging.Formatter(
+        '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
+    ))
+    file_handler.setLevel(logging.INFO)
+    app.logger.addHandler(file_handler)
+    app.logger.setLevel(logging.INFO)
+    app.logger.info('SubstituteRecordSystem startup')
+
     # Import and register blueprints
     from .routes import bp as main_bp
     app.register_blueprint(main_bp)
