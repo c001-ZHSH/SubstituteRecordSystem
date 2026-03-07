@@ -8,9 +8,13 @@ on:
 jobs:
   build:
     runs-on: windows-latest
+    
+    # 授予寫入權限，否則 GitHub 新的安全性預設會阻擋建立 Release
+    permissions:
+      contents: write
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -28,7 +32,7 @@ jobs:
         pyinstaller --noconfirm --onedir --windowed --add-data "app/templates;app/templates" --add-data "app/static;app/static" app.py
         
     - name: Upload Artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: Windows-App
         path: dist/app
