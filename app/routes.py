@@ -3,6 +3,7 @@ from datetime import datetime
 from .models import db, LeaveRecord, SubstituteRecord, Teacher, LeaveReason, TeacherSchedule, SchedulePeriod
 from .utils import generate_substitute_list_excel, generate_payment_excel
 import os
+import re
 
 bp = Blueprint('main', __name__)
 
@@ -85,10 +86,6 @@ def get_records():
 
     # Fetch all matching teacher records first
     records = query.all()
-
-    # Python-side date filtering
-    import re
-    from datetime import datetime
 
     def parse_roc_date(roc_str):
         # Extracts 115/03/09 out of "115/03/09(一)" and converts to datetime
