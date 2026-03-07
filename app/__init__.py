@@ -2,6 +2,7 @@ from flask import Flask
 from .models import db
 import os
 import sys
+import traceback
 
 def create_app():
     # Detect if we are running from a PyInstaller executable
@@ -43,6 +44,13 @@ def create_app():
     app.logger.addHandler(file_handler)
     app.logger.setLevel(logging.INFO)
     app.logger.info('SubstituteRecordSystem startup')
+
+    # Catch all unhandled exceptions
+    @app.errorhandler(Exception)
+    def handle_exception(e):
+        app.logger.error(f"Unhandled Exception: {str(e)}")
+        app.logger.error(traceback.format_exc())
+        return "Internal Server Error. Please check error.log", 500
 
     # Import and register blueprints
     from .routes import bp as main_bp
