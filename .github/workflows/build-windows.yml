@@ -29,7 +29,7 @@ jobs:
         
     - name: Build with PyInstaller
       run: |
-        pyinstaller --noconfirm --onedir --windowed --add-data "app/templates;app/templates" --add-data "app/static;app/static" --hidden-import=openpyxl --hidden-import=openpyxl.cell._writer app.py
+        pyinstaller --noconfirm --onedir --windowed --add-data "app;app" --hidden-import=openpyxl --hidden-import=openpyxl.cell._writer app.py
         
     - name: Upload Artifact
       uses: actions/upload-artifact@v4

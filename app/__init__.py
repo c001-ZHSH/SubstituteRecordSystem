@@ -7,9 +7,13 @@ import traceback
 def create_app():
     # Detect if we are running from a PyInstaller executable
     if getattr(sys, 'frozen', False):
-        bundle_dir = sys._MEIPASS
+        bundle_dir = getattr(sys, '_MEIPASS', os.path.dirname(sys.executable))
+        
+        # When --onedir with --add-data "app/templates:app/templates", 
+        # the structure inside _MEIPASS is exactly _MEIPASS/app/templates
         template_dir = os.path.join(bundle_dir, 'app', 'templates')
         static_dir = os.path.join(bundle_dir, 'app', 'static')
+        
         app = Flask(__name__, template_folder=template_dir, static_folder=static_dir)
         basedir = os.path.dirname(sys.executable)
     else:
