@@ -620,28 +620,36 @@ function initExportModal() {
             const cells = row.querySelectorAll('td');
 
             // Skip swapped classes completely from ALL export previews
-            const isSwapped = cells[10].textContent.includes('(調課)');
+            const isSwapped = cells[11].textContent.includes('(調課)');
             if (isSwapped) return;
 
             selectedRowsData.push({
                 leave_teacher: cells[1].textContent,
-                approval_info: cells[2].textContent,
-                sub_date: cells[3].textContent,
-                sub_teacher: cells[4].textContent,
-                periods: cells[5].textContent,
-                subject: cells[6].textContent,
-                class_name: cells[7].textContent,
-                period_count: parseInt(cells[8].textContent) || 0,
-                remarks: cells[11] && cells[11].querySelector('.edit-btn') ? '' : '' // Hack: we didn't render remarks in the main view
+                leave_reason: cells[2].textContent,
+                approval_info: cells[3].textContent,
+                sub_date: cells[4].textContent,
+                sub_teacher: cells[5].textContent,
+                periods: cells[6].textContent,
+                subject: cells[7].textContent,
+                class_name: cells[8].textContent,
+                period_count: parseInt(cells[9].textContent) || 0,
+                remarks: cells[12] && cells[12].querySelector('.edit-btn') ? '' : '' // Hack: we didn't render remarks in the main view
             });
         });
 
         // Just mirror the visible data for now
         selectedRowsData.forEach(data => {
             const tr = document.createElement('tr');
+
+            // Format leave and approval string neatly
+            let combinedReason = escapeHtml(data.leave_reason);
+            if (data.approval_info && data.approval_info !== '-') {
+                combinedReason += ` / ${escapeHtml(data.approval_info)}`;
+            }
+
             tr.innerHTML = `
                 <td>${escapeHtml(data.leave_teacher)}</td>
-                <td>${escapeHtml(data.approval_info)}</td>
+                <td>${combinedReason}</td>
                 <td>${escapeHtml(data.sub_date)}</td>
                 <td>${escapeHtml(data.sub_teacher)}</td>
                 <td>${escapeHtml(data.periods)}</td>
