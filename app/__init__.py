@@ -8,7 +8,7 @@ def create_app():
     # Detect if we are running from a PyInstaller executable
     if getattr(sys, 'frozen', False):
         basedir = getattr(sys, '_MEIPASS', os.path.dirname(sys.executable))
-        app = Flask(__name__, template_folder='app/templates', static_folder='app/static', root_path=basedir)
+        app = Flask(__name__, template_folder='app/templates', static_folder='app/static', static_url_path='/static', root_path=basedir)
         db_path = os.path.join(os.path.dirname(sys.executable), 'database.db')
     else:
         app = Flask(__name__, template_folder='templates', static_folder='static')
