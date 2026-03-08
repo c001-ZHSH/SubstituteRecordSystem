@@ -373,7 +373,7 @@ def append_to_backup_csv(leave_info, sub_list):
             if not file_exists:
                 # Write header row if establishing the file for the very first time
                 writer.writerow([
-                    "系統建立時間", "請假教師", "請假原因", "核准文號", 
+                    "系統編號", "系統建立時間", "請假教師", "請假原因", "核准文號", 
                     "代課日期", "代課教師", "節次", "科目", "班級", "節數", 
                     "是否調課", "教育部補助", "備註"
                 ])
@@ -382,6 +382,7 @@ def append_to_backup_csv(leave_info, sub_list):
             
             for sub in sub_list:
                 writer.writerow([
+                    sub.get('id', ''),
                     timestamp_now,
                     leave_info.get('teacher_name', ''),
                     leave_info.get('leave_reason', ''),
@@ -401,3 +402,110 @@ def append_to_backup_csv(leave_info, sub_list):
         # to crash the main database save operation and cost the user their work.
         import logging
         logging.error(f"Failed to write to backup_records.csv: {e}")
+
+def delete_from_backup_csv(target_ids):
+    """
+    Reads the backup CSV and completely removes rows whose System ID matches one of the target_ids.
+    """
+    import csv
+    import sys
+    import os
+    import logging
+
+    if getattr(sys, 'frozen', False):
+        root_dir = os.path.dirname(sys.executable)
+    else:
+        root_dir = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
+        
+    backup_path = os.path.join(root_dir, 'backup_records.csv')
+    
+    if not os.path.isfile(backup_path):
+        return # Nothing to delete if the file does not exist
+        
+    target_ids_str = [str(tid) for tid in target_ids]
+    
+    try:
+        # Read all rows
+        with open(backup_path, mode='r', newline='', encoding='utf-8-sig') as f:
+            reader = csv.reader(f)
+            rows = list(reader)
+            
+        if not rows:
+            return
+            
+        # Re-write the file excluding targets
+        with open(backup_path, mode='w', newline='', encoding='utf-8-sig') as f:
+            writer = csv.writer(f)
+            # Write header
+            writer.writerow(rows[0])
+            for row in rows[1:]:
+                # If the row has content and its ID doesn't match a target ID, keep it
+                if len(row) > 0 and row[0] not in target_ids_str:
+                    writer.writerow(row)
+                    
+    except Exception as e:
+        logging.error(f"Failed to delete {target_ids} from backup_records.csv: {e}")
+
+def update_in_backup_csv(leave_info, sub_record_dict):
+    """
+    Finds a specific row by its System ID and forcefully replaces it with the newly submitted payload.
+    """
+    import csv
+    import sys
+    import os
+    import logging
+    from datetime import datetime
+
+    if getattr(sys, 'frozen', False):
+        root_dir = os.path.dirname(sys.executable)
+    else:
+        root_dir = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
+        
+    backup_path = os.path.join(root_dir, 'backup_records.csv')
+    
+    if not os.path.isfile(backup_path):
+        return
+        
+    target_id_str = str(sub_record_dict.get('id', ''))
+    if not target_id_str:
+        return
+        
+    try:
+        # Read all rows
+        with open(backup_path, mode='r', newline='', encoding='utf-8-sig') as f:
+            reader = csv.reader(f)
+            rows = list(reader)
+            
+        if not rows:
+            return
+            
+        # Write back, substituting target row
+        with open(backup_path, mode='w', newline='', encoding='utf-8-sig') as f:
+            writer = csv.writer(f)
+            writer.writerow(rows[0])
+            for i, row in enumerate(rows[1:]):
+                if len(row) > 0 and row[0] == target_id_str:
+                    # Replace with the new array map
+                    # Retain the exact same "System Creation Time" (index 1) from the original row to preserve history
+                    original_timestamp = row[1] if len(row) > 1 else datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    writer.writerow([
+                        target_id_str,
+                        original_timestamp,
+                        leave_info.get('teacher_name', ''),
+                        leave_info.get('leave_reason', ''),
+                        leave_info.get('approval_number', ''),
+                        sub_record_dict.get('substitute_date', ''),
+                        sub_record_dict.get('substitute_teacher', ''),
+                        sub_record_dict.get('periods', ''),
+                        sub_record_dict.get('subject', ''),
+                        sub_record_dict.get('class_name', ''),
+                        sub_record_dict.get('period_count', ''),
+                        "是" if (sub_record_dict.get('is_swapped') in [True, 1, '1', 'true', 'True']) else "否",
+                        "是" if (sub_record_dict.get('is_moe_subsidized') in [True, 1, '1', 'true', 'True']) else "否",
+                        sub_record_dict.get('remarks', '')
+                    ])
+                else:
+                    writer.writerow(row)
+                    
+    except Exception as e:
+        logging.error(f"Failed to update ID {target_id_str} in backup_records.csv: {e}")

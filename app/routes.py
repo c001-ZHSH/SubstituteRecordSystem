@@ -53,7 +53,7 @@ def create_record():
         is_moe_list = request.form.getlist('is_moe_subsidized[]')
         is_swapped_list = request.form.getlist('is_swapped[]')
 
-        sub_records_to_backup = []
+        sub_records_created = []
         for i in range(len(sub_dates)):
             is_moe = (is_moe_list[i] == 'true')
             is_swapped = (is_swapped_list[i] == 'true' if i < len(is_swapped_list) else False)
@@ -72,23 +72,26 @@ def create_record():
                 is_swapped=is_swapped
             )
             db.session.add(sub_record)
-            
-            # Extract plain dict for CSV backup before the session commit detaches the SQLAlchemy models
-            sub_records_to_backup.append({
-                'substitute_date': sub_dates[i],
-                'substitute_teacher': sub_teachers[i],
-                'periods': periods_list[i],
-                'subject': subjects[i],
-                'class_name': class_names[i],
-                'period_count': int(period_counts[i]),
-                'is_swapped': is_swapped,
-                'is_moe_subsidized': is_moe,
-                'remarks': remarks
-            })
+            sub_records_created.append(sub_record)
 
         db.session.commit()
         
-        # Trigger transparent CSV backup mechanism
+        # Trigger transparent CSV backup mechanism - Must happen after commit to get sub.id
+        sub_records_to_backup = []
+        for sub in sub_records_created:
+            sub_records_to_backup.append({
+                'id': sub.id,
+                'substitute_date': sub.substitute_date,
+                'substitute_teacher': sub.substitute_teacher,
+                'periods': sub.periods,
+                'subject': sub.subject,
+                'class_name': sub.class_name,
+                'period_count': sub.period_count,
+                'is_swapped': sub.is_swapped,
+                'is_moe_subsidized': sub.is_moe_subsidized,
+                'remarks': sub.remarks
+            })
+            
         leave_info = {
             'teacher_name': data.get('teacher_name'),
             'leave_reason': data.get('leave_reason'),
@@ -223,6 +226,10 @@ def delete_record(record_id):
         db.session.delete(leave_record)
         
     db.session.commit()
+    
+    from .utils import delete_from_backup_csv
+    delete_from_backup_csv([record_id])
+    
     return jsonify({"message": "Record deleted successfully"}), 200
 
 @bp.route('/api/records/batch', methods=['DELETE'])
@@ -289,6 +296,29 @@ def update_record(record_id):
             sub_record.is_swapped = bool(data['is_swapped'])
 
         db.session.commit()
+        
+        # Sync update to CSV
+        leave_info = {
+            'teacher_name': leave_record.teacher_name,
+            'leave_reason': leave_record.leave_reason,
+            'approval_number': leave_record.approval_number
+        }
+        sub_record_dict = {
+            'id': sub_record.id,
+            'substitute_date': sub_record.substitute_date,
+            'substitute_teacher': sub_record.substitute_teacher,
+            'periods': sub_record.periods,
+            'subject': sub_record.subject,
+            'class_name': sub_record.class_name,
+            'period_count': sub_record.period_count,
+            'is_swapped': sub_record.is_swapped,
+            'is_moe_subsidized': sub_record.is_moe_subsidized,
+            'remarks': sub_record.remarks
+        }
+        
+        from .utils import update_in_backup_csv
+        update_in_backup_csv(leave_info, sub_record_dict)
+        
         return jsonify({"message": "Record updated successfully"}), 200
     except Exception as e:
         db.session.rollback()
