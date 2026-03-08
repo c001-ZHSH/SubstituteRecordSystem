@@ -1301,6 +1301,12 @@ function initAutoFill() {
             const matches = await res.json();
 
             if (res.ok) {
+                // Clear existing substitution rows before appending new ones to prevent stacking from previous clicks
+                const container = document.getElementById('substitute-records');
+                if (container) {
+                    container.innerHTML = '';
+                }
+
                 if (matches.length === 0) {
                     alert('在此區間內找不到這位教師的課表設定，無法自動帶出。');
                 } else {
