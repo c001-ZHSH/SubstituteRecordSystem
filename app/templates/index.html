@@ -115,6 +115,16 @@
         </form>
     </div>
 
+    </div>
+
+    <!-- Quick Actions -->
+    <div style="display: flex; gap: 0.5rem; justify-content: flex-end; margin-bottom: 1rem; padding: 0 1rem;">
+        <span style="align-self: center; font-size: 0.9rem; color: var(--text-secondary);">快速查詢：</span>
+        <button type="button" class="btn btn-outline btn-sm quick-recent-btn" data-limit="10">最近 10 筆</button>
+        <button type="button" class="btn btn-outline btn-sm quick-recent-btn" data-limit="20">最近 20 筆</button>
+        <button type="button" class="btn btn-outline btn-sm quick-recent-btn" data-limit="50">最近 50 筆</button>
+    </div>
+
     <div class="card glass-panel results-card">
         <div class="table-responsive">
             <table class="data-table" id="results-table">
@@ -122,6 +132,7 @@
                     <tr>
                         <th width="40"><input type="checkbox" id="select-all-cb"></th>
                         <th>請假教師</th>
+                        <th>請假原因</th>
                         <th>核准文號</th>
                         <th>代課日期</th>
                         <th>代課教師</th>
@@ -136,7 +147,7 @@
                 </thead>
                 <tbody>
                     <tr>
-                        <td colspan="11" class="text-center text-muted">請設定條件並點擊查詢</td>
+                        <td colspan="13" class="text-center text-muted">請設定條件並點擊查詢</td>
                     </tr>
                 </tbody>
             </table>

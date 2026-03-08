@@ -177,6 +177,25 @@ def get_records():
 
     return jsonify(result)
 
+@bp.route('/api/records/recent', methods=['GET'])
+def get_recent_records():
+    try:
+        limit_str = request.args.get('limit', '10')
+        limit = int(limit_str)
+    except ValueError:
+        limit = 10
+
+    # Order by SubstituteRecord.id DESC to get the absolute newest records
+    records = SubstituteRecord.query.order_by(SubstituteRecord.id.desc()).limit(limit).all()
+
+    result = []
+    for r in records:
+        data = r.to_dict()
+        data['leave_record'] = r.leave_record.to_dict()
+        result.append(data)
+
+    return jsonify(result)
+
 @bp.route('/api/export/list', methods=['POST'])
 def export_list():
     record_ids = request.form.getlist('record_ids[]')
@@ -482,7 +501,7 @@ def match_schedule():
         LeaveRecord.teacher_name == teacher_name
     ).all()
     
-    # Build a lookup map: { 'YYYY-MM-DD': { period_num: sub_teacher_name } }
+    # Build a lookup map: { 'YYYY-MM-DD': { period_num: {'teacher': name, 'reason': reason} } }
     existing_lookup = {}
     for sub in existing_subs_query:
         # sub.substitute_date format: "115/03/06(五)" -> Extract YYYY-MM-DD
@@ -496,7 +515,10 @@ def match_schedule():
             if iso_date not in existing_lookup:
                 existing_lookup[iso_date] = {}
             for p_num in p_set:
-                existing_lookup[iso_date][p_num] = sub.substitute_teacher
+                existing_lookup[iso_date][p_num] = {
+                    'teacher': sub.substitute_teacher,
+                    'reason': sub.leave_record.leave_reason
+                }
 
     matches = []
     current_date = start_date
@@ -527,9 +549,9 @@ def match_schedule():
                     date_formatted = f"{roc_year}/{current_date.month:02d}/{current_date.day:02d}({weekdays_zh[weekday-1]})"
                     
                     # Check for overlap
-                    existing_sub = None
+                    existing_sub_info = None
                     if iso_current in existing_lookup and period.period_num in existing_lookup[iso_current]:
-                        existing_sub = existing_lookup[iso_current][period.period_num]
+                        existing_sub_info = existing_lookup[iso_current][period.period_num]
 
                     # We also want to pass back the YYYY-MM-DD format for hidden inputs
                     match_data = {
@@ -541,8 +563,9 @@ def match_schedule():
                         'is_moe_subsidized': period.is_moe_subsidized
                     }
                     
-                    if existing_sub:
-                        match_data['existing_sub'] = existing_sub
+                    if existing_sub_info:
+                        match_data['existing_sub'] = existing_sub_info['teacher']
+                        match_data['existing_leave_reason'] = existing_sub_info['reason']
                         
                     matches.append(match_data)
                     

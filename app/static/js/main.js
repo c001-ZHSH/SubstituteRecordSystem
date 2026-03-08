@@ -193,6 +193,19 @@ function initDynamicForm() {
                 alert('儲存成功！');
                 form.reset();
                 container.innerHTML = '';
+
+                // Automatically redirect to the Query UI and load the 10 most recent records
+                setTimeout(() => {
+                    const queryNavItem = document.querySelector('.sidebar-nav .nav-item[data-target="query-section"]');
+                    if (queryNavItem) {
+                        queryNavItem.click();
+                    }
+
+                    const recent10Btn = document.querySelector('.quick-recent-btn[data-limit="10"]');
+                    if (recent10Btn) {
+                        recent10Btn.click();
+                    }
+                }, 100);
             } else {
                 alert('儲存失敗：' + (result.error || '未知錯誤'));
             }
@@ -243,6 +256,25 @@ function initQueryForm() {
         updateExportBtnState();
     });
 
+    // Quick Actions (Recent N records)
+    const quickBtns = document.querySelectorAll('.quick-recent-btn');
+    quickBtns.forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            const limit = e.target.dataset.limit;
+            try {
+                tbody.innerHTML = '<tr><td colspan="12" class="text-center">載入最新紀錄中...</td></tr>';
+                const response = await fetch(`/api/records/recent?limit=${limit}`);
+                const data = await response.json();
+
+                window.currentQueryData = data;
+                renderTable(data);
+            } catch (error) {
+                console.error('Recent query error:', error);
+                tbody.innerHTML = '<tr><td colspan="12" class="text-center text-danger">查詢失敗，請重試</td></tr>';
+            }
+        });
+    });
+
     function renderTable(data) {
         selectAllCb.checked = false;
 
@@ -258,6 +290,7 @@ function initQueryForm() {
             row.innerHTML = `
                 <td><input type="checkbox" class="row-cb" value="${item.id}" data-type="sub" data-teacher="${escapeHtml(item.substitute_teacher)}"></td>
                 <td>${escapeHtml(item.leave_record.teacher_name)}</td>
+                <td>${escapeHtml(item.leave_record.leave_reason)}</td>
                 <td>${escapeHtml(item.leave_record.approval_number || '-')}</td>
                 <td>${escapeHtml(item.substitute_date)}</td>
                 <td>${escapeHtml(item.substitute_teacher)}</td>
@@ -1346,8 +1379,29 @@ function initAutoFill() {
                             if (removeBtn) {
                                 removeBtn.style.display = 'none'; // Prevent removing the dummy row
                                 const badge = document.createElement('span');
-                                badge.textContent = '已排代';
-                                badge.style.color = 'var(--text-secondary)';
+
+                                // Auto-Fill Conflict Feature (2026-03-08)
+                                let badgeText = '已排代';
+                                if (m.existing_leave_reason) {
+                                    badgeText += ` (假別：${m.existing_leave_reason})`;
+
+                                    // Cross-reference with the currently selected leave reason in the form
+                                    const currentSelectedReason = document.getElementById('leave_reason')?.value;
+                                    if (currentSelectedReason && currentSelectedReason !== m.existing_leave_reason) {
+                                        // Use a timeout to ensure it alerts after the UI finishes rendering
+                                        setTimeout(() => {
+                                            alert(`注意：系統發現 ${m.substitute_date_display} 第 ${m.period_num} 節已排代！\n目前選擇的假別為「${currentSelectedReason}」，但原本的假別為「${m.existing_leave_reason}」。\n請確認假別是否一致或需要修正舊紀錄。`);
+                                        }, 100);
+                                        // Highlight the badge in red for extra warning
+                                        badge.style.color = 'var(--danger-color)';
+                                    } else {
+                                        badge.style.color = 'var(--text-secondary)';
+                                    }
+                                } else {
+                                    badge.style.color = 'var(--text-secondary)';
+                                }
+
+                                badge.textContent = badgeText;
                                 badge.style.fontSize = '0.75rem';
                                 badge.style.fontWeight = 'bold';
                                 badge.style.position = 'absolute';
