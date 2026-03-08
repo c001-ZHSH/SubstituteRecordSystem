@@ -22,7 +22,7 @@ except Exception as e:
     raise
 
 def open_browser():
-    webbrowser.open_new('http://127.0.0.1:5000/')
+    webbrowser.open_new('http://127.0.0.1:5001/')
 
 if __name__ == '__main__':
     try:
@@ -33,8 +33,8 @@ if __name__ == '__main__':
         is_debug = not getattr(sys, 'frozen', False)
         
         # Log before starting
-        logging.info("Starting Flask server...")
-        app.run(port=5000, debug=is_debug)
+        logging.info("Starting Flask server on port 5001...")
+        app.run(port=5001, debug=is_debug)
     except Exception as e:
         logging.error("Server crashed: " + str(e))
         logging.error(traceback.format_exc())
