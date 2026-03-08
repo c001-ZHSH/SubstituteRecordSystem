@@ -53,7 +53,12 @@ def create_record():
         is_moe_list = request.form.getlist('is_moe_subsidized[]')
         is_swapped_list = request.form.getlist('is_swapped[]')
 
+        sub_records_to_backup = []
         for i in range(len(sub_dates)):
+            is_moe = (is_moe_list[i] == 'true')
+            is_swapped = (is_swapped_list[i] == 'true' if i < len(is_swapped_list) else False)
+            remarks = remarks_list[i] if i < len(remarks_list) else ''
+            
             sub_record = SubstituteRecord(
                 leave_record_id=leave_record.id,
                 substitute_date=sub_dates[i],
@@ -62,13 +67,37 @@ def create_record():
                 subject=subjects[i],
                 class_name=class_names[i],
                 period_count=int(period_counts[i]),
-                remarks=remarks_list[i] if i < len(remarks_list) else '',
-                is_moe_subsidized=(is_moe_list[i] == 'true'),
-                is_swapped=(is_swapped_list[i] == 'true' if i < len(is_swapped_list) else False)
+                remarks=remarks,
+                is_moe_subsidized=is_moe,
+                is_swapped=is_swapped
             )
             db.session.add(sub_record)
+            
+            # Extract plain dict for CSV backup before the session commit detaches the SQLAlchemy models
+            sub_records_to_backup.append({
+                'substitute_date': sub_dates[i],
+                'substitute_teacher': sub_teachers[i],
+                'periods': periods_list[i],
+                'subject': subjects[i],
+                'class_name': class_names[i],
+                'period_count': int(period_counts[i]),
+                'is_swapped': is_swapped,
+                'is_moe_subsidized': is_moe,
+                'remarks': remarks
+            })
 
         db.session.commit()
+        
+        # Trigger transparent CSV backup mechanism
+        leave_info = {
+            'teacher_name': data.get('teacher_name'),
+            'leave_reason': data.get('leave_reason'),
+            'approval_number': data.get('approval_number')
+        }
+        
+        from .utils import append_to_backup_csv
+        append_to_backup_csv(leave_info, sub_records_to_backup)
+        
         return jsonify({'success': True, 'message': 'Record saved successfully'})
 
     except Exception as e:

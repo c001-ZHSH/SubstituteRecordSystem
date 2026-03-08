@@ -345,3 +345,59 @@ def generate_payment_excel(records, unit_price, teacher_deductions):
     os.close(fd)
     wb.save(path)
     return path
+
+def append_to_backup_csv(leave_info, sub_list):
+    """
+    Appends the newly created substitute records into a flat CSV file 
+    located next to the database/executable for emergency recovery.
+    """
+    import csv
+    import sys
+    from datetime import datetime
+    
+    # Determine the safest root directory to place the backup file
+    if getattr(sys, 'frozen', False):
+        root_dir = os.path.dirname(sys.executable)
+    else:
+        root_dir = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
+        
+    backup_path = os.path.join(root_dir, 'backup_records.csv')
+    
+    file_exists = os.path.isfile(backup_path)
+    
+    # Use utf-8-sig to ensure Excel on Windows reads the Chinese characters correctly without manual conversion
+    try:
+        with open(backup_path, mode='a', newline='', encoding='utf-8-sig') as f:
+            writer = csv.writer(f)
+            
+            if not file_exists:
+                # Write header row if establishing the file for the very first time
+                writer.writerow([
+                    "系統建立時間", "請假教師", "請假原因", "核准文號", 
+                    "代課日期", "代課教師", "節次", "科目", "班級", "節數", 
+                    "是否調課", "教育部補助", "備註"
+                ])
+                
+            timestamp_now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            
+            for sub in sub_list:
+                writer.writerow([
+                    timestamp_now,
+                    leave_info.get('teacher_name', ''),
+                    leave_info.get('leave_reason', ''),
+                    leave_info.get('approval_number', ''),
+                    sub.get('substitute_date', ''),
+                    sub.get('substitute_teacher', ''),
+                    sub.get('periods', ''),
+                    sub.get('subject', ''),
+                    sub.get('class_name', ''),
+                    sub.get('period_count', ''),
+                    "是" if (sub.get('is_swapped') in [True, 1, '1', 'true', 'True']) else "否",
+                    "是" if (sub.get('is_moe_subsidized') in [True, 1, '1', 'true', 'True']) else "否",
+                    sub.get('remarks', '')
+                ])
+    except Exception as e:
+        # We catch exceptions here because we DO NOT want a backup failure (e.g. file locked by Excel)
+        # to crash the main database save operation and cost the user their work.
+        import logging
+        logging.error(f"Failed to write to backup_records.csv: {e}")
