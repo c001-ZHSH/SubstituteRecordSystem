@@ -54,4 +54,28 @@ def create_app():
     from .routes import bp as main_bp
     app.register_blueprint(main_bp)
 
+    # Start the heartbeat monitor if running as a packaged executable
+    if getattr(sys, 'frozen', False):
+        import threading
+        import time
+        from . import routes
+        
+        def monitor_heartbeat():
+            # Wait 60 seconds to allow the browser to initially open
+            time.sleep(60) 
+            while True:
+                time.sleep(3)
+                if getattr(routes, 'HEARTBEAT_ACTIVE', False):
+                    # If we have an active connection but it went silent for 5 seconds
+                    if time.time() - getattr(routes, 'LAST_HEARTBEAT', time.time()) > 5:
+                        app.logger.info("Heartbeat lost. Shutting down system.")
+                        os._exit(0)
+                else:
+                    # If the heartbeat never activated within 120 seconds of launching, assume failure and shut down
+                    if time.time() - getattr(routes, 'LAST_HEARTBEAT', time.time()) > 120:
+                        app.logger.info("Heartbeat never established. Shutting down system.")
+                        os._exit(0)
+                        
+        threading.Thread(target=monitor_heartbeat, daemon=True).start()
+
     return app

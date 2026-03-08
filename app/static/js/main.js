@@ -8,7 +8,17 @@ document.addEventListener('DOMContentLoaded', () => {
     initLeaveReasonModal();
     initScheduleModal();
     initAutoFill();
+    initHeartbeat();
 });
+
+// --- System Heartbeat ---
+function initHeartbeat() {
+    // Send a heartbeat every 2 seconds to keep the PyInstaller background server alive.
+    // If the user closes the browser window, the backend daemon will notice the silence and shut itself down.
+    setInterval(() => {
+        fetch('/api/heartbeat', { method: 'POST' }).catch(() => { });
+    }, 2000);
+}
 
 // --- Navigation ---
 function initNavigation() {

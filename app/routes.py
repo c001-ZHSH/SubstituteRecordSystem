@@ -4,8 +4,12 @@ from .models import db, LeaveRecord, SubstituteRecord, Teacher, LeaveReason, Tea
 from .utils import generate_substitute_list_excel, generate_payment_excel
 import os
 import re
+import time
 
 bp = Blueprint('main', __name__)
+
+LAST_HEARTBEAT = time.time()
+HEARTBEAT_ACTIVE = False
 
 @bp.route('/')
 def index():
@@ -504,3 +508,14 @@ def shutdown():
         
     threading.Timer(0.5, kill_server).start()
     return jsonify({'success': True, 'message': 'System shutting down...'})
+
+@bp.route('/api/heartbeat', methods=['POST'])
+def heartbeat():
+    """
+    Called every few seconds by the frontend. If this stops, the backend daemon
+    knows the browser was closed and will terminate the process.
+    """
+    global LAST_HEARTBEAT, HEARTBEAT_ACTIVE
+    LAST_HEARTBEAT = time.time()
+    HEARTBEAT_ACTIVE = True
+    return '', 200
