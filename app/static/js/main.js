@@ -299,7 +299,7 @@ function initQueryForm() {
                 <td>${escapeHtml(item.class_name)}</td>
                 <td>${item.period_count}</td>
                 <td>${item.is_moe_subsidized ? '✅' : '-'}</td>
-                <td style="text-align: center;">${item.is_swapped ? '<span class="badge" style="background-color: var(--secondary-color); color: white; padding: 0.1rem 0.3rem; border-radius: 4px; font-size: 0.75rem;">(調課)</span>' : '-'}</td>
+                <td style="text-align: center;">${item.is_swapped ? '<span class="badge" style="background-color: #6b7280; color: white; padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.75rem; font-weight: 500;">(調課)</span>' : '-'}</td>
                 <td>
                     <button type="button" class="btn btn-outline btn-sm edit-btn" style="color: var(--primary-color); border-color: var(--primary-color); padding: 0.25rem 0.5rem; font-size: 0.75rem; margin-right: 4px;">編輯</button>
                     <button type="button" class="btn btn-outline btn-sm delete-btn" data-id="${item.id}" style="color: var(--danger-color); border-color: var(--danger-color); padding: 0.25rem 0.5rem; font-size: 0.75rem;">刪除</button>
