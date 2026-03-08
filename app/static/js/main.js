@@ -15,10 +15,21 @@ function initNavigation() {
     const navItems = document.querySelectorAll('.sidebar-nav .nav-item');
     const sections = document.querySelectorAll('.content-section');
 
+    const shutdownBtn = document.getElementById('shutdown-system-btn');
+    if (shutdownBtn) {
+        shutdownBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (confirm('確定要關閉系統嗎？\n這將會完全終止背景的伺服器程式，關閉後您可以安全地關閉此瀏覽器視窗。')) {
+                document.body.innerHTML = '<div style="display:flex; justify-content:center; align-items:center; height:100vh; font-family: sans-serif; flex-direction:column; background-color: #f3f4f6; color: #1f2937;"><h2 style="font-size: 24px; font-weight: 600;">系統已關閉</h2><p style="color: #6b7280; margin-top: 10px;">背景伺服器已安全終止，您可以直接關閉此瀏覽器分頁了。</p></div>';
+                fetch('/api/shutdown', { method: 'POST' }).catch(err => console.error(err));
+            }
+        });
+    }
+
     navItems.forEach(item => {
         item.addEventListener('click', (e) => {
-            // Do not override visibility for buttons meant only to trigger modals
-            if (item.id === 'manage-teachers-btn' || item.id === 'manage-leave-reasons-btn' || item.id === 'manage-schedules-btn') {
+            // Do not override visibility for buttons meant only to trigger modals or actions
+            if (item.id === 'manage-teachers-btn' || item.id === 'manage-leave-reasons-btn' || item.id === 'manage-schedules-btn' || item.id === 'shutdown-system-btn') {
                 return;
             }
 

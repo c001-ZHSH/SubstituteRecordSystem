@@ -489,3 +489,18 @@ def match_schedule():
     matches.sort(key=lambda x: (x['substitute_date_raw'], x['period_num']))
 
     return jsonify(matches)
+
+@bp.route('/api/shutdown', methods=['POST'])
+def shutdown():
+    """
+    Terminates the Flask server and the PyInstaller background process.
+    """
+    import os
+    import threading
+    
+    # Schedule process termination slightly in the future so we can actually return the HTTP 200 response to the browser first.
+    def kill_server():
+        os._exit(0)
+        
+    threading.Timer(0.5, kill_server).start()
+    return jsonify({'success': True, 'message': 'System shutting down...'})
