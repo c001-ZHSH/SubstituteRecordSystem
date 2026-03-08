@@ -1302,7 +1302,7 @@ function initAutoFill() {
 
             if (res.ok) {
                 // Clear existing substitution rows before appending new ones to prevent stacking from previous clicks
-                const container = document.getElementById('substitute-records');
+                const container = document.getElementById('details-container');
                 if (container) {
                     container.innerHTML = '';
                 }
